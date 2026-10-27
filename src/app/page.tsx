@@ -1,69 +1,248 @@
-import Image from "next/image";
+
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+type Rule = {
+  intent: string;
+  keywords: string[];
+  reply: string;
+};
+
+type Message = {
+  id: number;
+  sender: "user" | "bot";
+  text: string;
+};
+
+const chatbotRules: Rule[] = [];
+
+function normalizeMessage(message: string): string {
+  return message.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+function getBotReply(userMessage: string): string {
+  const normalizedMessage = normalizeMessage(userMessage);
+
+  const matchedRule = chatbotRules.find((rule) =>
+    rule.keywords.some((keyword) =>
+      normalizedMessage.includes(normalizeMessage(keyword))
+    )
+  );
+
+  if (matchedRule) {
+    return matchedRule.reply;
+  }
+
+  return "Sorry, I could not understand your question. Please ask about fees, admissions, university timings, the library, or hostels.";
+}
 
 export default function Home() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 1,
+      sender: "bot",
+      text: "Assalam-o-Alaikum! Welcome to UOS Helpdesk Bot. 👋 How can I help you today? You can ask me about fees, admissions, timings, the library, or hostels."
+    }
+  ]);
+
+  const [input, setInput] = useState("");
+  const [nextId, setNextId] = useState(2);
+  const [isTyping, setIsTyping] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  function handleSend() {
+    const text = input.trim();
+
+    if (!text || isTyping) return;
+
+    const userMessage: Message = {
+      id: nextId,
+      sender: "user",
+      text
+    };
+
+    const botMessage: Message = {
+      id: nextId + 1,
+      sender: "bot",
+      text: getBotReply(text)
+    };
+
+    setMessages((previous) => [
+      ...previous,
+      userMessage,
+      botMessage
+    ]);
+
+    setInput("");
+    setNextId((previous) => previous + 2);
+  }
+
+  function handleKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto flex h-[85vh] min-h-[520px] max-h-[850px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+
+        {/* Header */}
+        <header className="flex items-center gap-4 bg-emerald-800 px-5 py-5 text-white sm:px-7">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-2xl">
+            🎓
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-bold sm:text-2xl">
+              UOS Helpdesk Bot
+            </h1>
+            <p className="mt-1 text-sm text-emerald-100">
+              University of Sargodha Student Support
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-emerald-100">
+            <span className="h-2.5 w-2.5 rounded-full bg-green-300" />
+            Online
+          </div>
+        </header>
+
+        {/* Chat messages */}
+        <section
+          className="flex-1 space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-6"
+          aria-label="Chat messages"
+          aria-live="polite"
+        >
+          <div className="text-center">
+            <span className="rounded-full bg-slate-200 px-3 py-1 text-xs text-slate-600">
+              Student Helpdesk
+            </span>
+          </div>
+
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex items-end gap-2 ${
+                message.sender === "user"
+                  ? "justify-end"
+                  : "justify-start"
+              }`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              {message.sender === "bot" && (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm">
+                  🎓
+                </div>
+              )}
+
+              <div
+                className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[75%] ${
+                  message.sender === "user"
+                    ? "rounded-br-sm bg-emerald-700 text-white"
+                    : "rounded-bl-sm border border-slate-200 bg-white text-slate-700 shadow-sm"
+                }`}
+              >
+                {message.text}
+              </div>
+
+              {message.sender === "user" && (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm">
+                  👤
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isTyping && (
+            <div className="text-sm text-slate-500">
+              Bot is typing...
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </section>
+
+        {/* Quick questions */}
+        <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-white px-4 pt-4 sm:px-6">
+          {[
+            "Fee structure",
+            "Admission details",
+            "University timings",
+            "Library",
+            "Hostel"
+          ].map((question) => (
+            <button
+              key={question}
+              type="button"
+              onClick={() => {
+                if (isTyping) return;
+
+                const userMessage: Message = {
+                  id: nextId,
+                  sender: "user",
+                  text: question
+                };
+
+                const botMessage: Message = {
+                  id: nextId + 1,
+                  sender: "bot",
+                  text: getBotReply(question)
+                };
+
+                setMessages((previous) => [
+                  ...previous,
+                  userMessage,
+                  botMessage
+                ]);
+
+                setNextId((previous) => previous + 2);
+              }}
+              className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              {question}
+            </button>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Input area */}
+        <form
+          className="flex items-center gap-3 border-t border-slate-200 bg-white p-4 sm:p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSend();
+          }}
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your question here..."
+            aria-label="Type your question"
+            className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+          />
+
+          <button
+            type="submit"
+            disabled={!input.trim() || isTyping}
+            className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Send
+          </button>
+        </form>
+
+        <footer className="bg-white pb-3 text-center text-xs text-slate-400">
+          UOS Helpdesk Bot · Rule-based student support
+        </footer>
+      </div>
+    </main>
   );
 }
